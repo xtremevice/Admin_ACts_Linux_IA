@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Admin Acts Linux
+GenericName=Gestor de Paquetes
+Comment=Gestor de paquetes con GUI para actualizar, instalar y gestionar repositorios
+Exec=admin-acts-linux
+Icon=admin-acts-linux
+Terminal=false
+Categories=System;PackageManager;
+Keywords=paquetes;actualizar;instalar;repositorios;apt;pacman;
+StartupNotify=true

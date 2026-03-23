@@ -1,0 +1,20 @@
+Package: admin-acts-linux
+Version: 1.0.0
+Section: admin
+Priority: optional
+Architecture: amd64
+Depends: libgtkmm-3.0-1t64 | libgtkmm-3.0-1, libgtk-3-0, libglib2.0-0, libcairo2, libpangomm-1.4-1v5, libatkmm-1.6-1v5, libcairomm-1.0-1v5, libgiomm-2.4-1v5, apt | pacman
+Recommends: apt
+Maintainer: Admin Acts Linux Team <admin@admin-acts-linux.local>
+Homepage: https://github.com/xtremevice/Admin_ACts_Linux_IA
+Description: Gestor de paquetes con interfaz gráfica para Linux
+ Administrador de paquetes con GUI desarrollado en C++ y GTK3.
+ Permite actualizar, instalar y gestionar paquetes de APT y Pacman
+ desde una interfaz gráfica unificada con tres pestañas:
+ .
+ - Actualizaciones: lista todos los paquetes instalados con
+   posibilidad de actualizar o eliminar cada uno.
+ - Instalar: buscador en todos los repositorios instalados con
+   instalación automática de dependencias.
+ - Configuración: gestión de repositorios, autostart y horario
+   de actualizaciones automáticas.

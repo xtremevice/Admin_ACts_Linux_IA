@@ -1,0 +1,10 @@
+admin-acts-linux (1.0.0) unstable; urgency=medium
+
+  * Initial release.
+  * Gestor de paquetes con GUI (GTK3/C++17).
+  * Soporte para APT y Pacman.
+  * Tres pestañas: Actualizaciones, Instalar, Configuración.
+  * Gestión de repositorios con activación/desactivación.
+  * Autostart y horario de actualizaciones automáticas.
+
+ -- Admin Acts Linux Team <admin@admin-acts-linux.local>  Mon, 23 Mar 2026 00:00:00 +0000
