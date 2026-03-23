@@ -4,10 +4,23 @@
 #include <cstdlib>
 #include <filesystem>
 #include <map>
+#include <unistd.h>
+#include <pwd.h>
 
-// Simple config file location
+// Safely determine the user's home directory
+static std::string settings_get_home_dir() {
+    struct passwd* pw = getpwuid(getuid());
+    if (pw && pw->pw_dir && pw->pw_dir[0] != '\0')
+        return pw->pw_dir;
+    const char* home = getenv("HOME");
+    if (home && home[0] != '\0')
+        return home;
+    return "/root";
+}
+
+// Config file location
 static const std::string CONFIG_DIR =
-    std::string(getenv("HOME") ? getenv("HOME") : "/root") + "/.config/admin-acts-linux";
+    settings_get_home_dir() + "/.config/admin-acts-linux";
 static const std::string CONFIG_FILE = CONFIG_DIR + "/settings.conf";
 
 SettingsTab::SettingsTab(PackageManager& pm)

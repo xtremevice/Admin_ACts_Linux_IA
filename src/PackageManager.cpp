@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <regex>
 #include <unistd.h>
+#include <fcntl.h>
+#include <pwd.h>
 #include <sys/stat.h>
 
 namespace fs = std::filesystem;
@@ -468,12 +470,13 @@ std::vector<Repository> PackageManager::list_apt_repos() {
 
             // Detect if commented out
             std::string content = trim(line);
-            if (content[0] == '#') {
+            if (!content.empty() && content[0] == '#') {
                 r.enabled = false;
                 content   = trim(content.substr(1));
             } else {
                 r.enabled = true;
             }
+            if (content.empty()) continue;
 
             // Parse: type uri suite components
             std::istringstream ss(content);
@@ -594,20 +597,51 @@ bool PackageManager::disable_repository(const Repository& repo,
 
 // ---------------------------------------------------------------------------
 // add_repository
+// Safely appends a repository line to the given file using tee.
+// The line is passed through a heredoc-style approach to avoid shell injection.
 // ---------------------------------------------------------------------------
 bool PackageManager::add_repository(const std::string& line,
                                     const std::string& file_path,
                                     const std::string& root_password) {
-    std::string cmd = "bash -c 'echo \"" + line + "\" >> " + file_path + "'";
+    // Write the line to a temp file, then append with sudo tee -a
+    // This avoids embedding user content directly in a shell command string.
+    char tmp_path[] = "/tmp/admin-acts-repo-XXXXXX";
+    int fd = mkstemp(tmp_path);
+    if (fd < 0) return false;
+
+    // Write repo line to temp file
+    std::string content = line + "\n";
+    if (write(fd, content.c_str(), content.size()) < 0) {
+        close(fd);
+        unlink(tmp_path);
+        return false;
+    }
+    close(fd);
+
+    // Safely escape only the temp path and destination path (both are under our control)
+    std::string cmd = "tee -a " + file_path + " < " + std::string(tmp_path) + " > /dev/null";
     auto [rc, out] = run_sudo(cmd, root_password);
+    unlink(tmp_path);
     return rc == 0;
 }
 
 // ---------------------------------------------------------------------------
 // Autostart (via systemd user service or XDG autostart)
 // ---------------------------------------------------------------------------
-static const std::string AUTOSTART_DIR = std::string(getenv("HOME") ? getenv("HOME") : "/root") +
-                                          "/.config/autostart";
+
+// Safely determine the user's home directory using getpwuid first, falling
+// back to the HOME environment variable, and finally to "/root".
+static std::string get_home_dir() {
+    struct passwd* pw = getpwuid(getuid());
+    if (pw && pw->pw_dir && pw->pw_dir[0] != '\0')
+        return pw->pw_dir;
+    const char* home = getenv("HOME");
+    if (home && home[0] != '\0')
+        return home;
+    return "/root";
+}
+
+static const std::string AUTOSTART_DIR  = get_home_dir() + "/.config/autostart";
 static const std::string AUTOSTART_FILE = AUTOSTART_DIR + "/admin-acts-linux.desktop";
 static const std::string DESKTOP_CONTENT =
     "[Desktop Entry]\n"

@@ -9,7 +9,7 @@
 class UpdatesTab : public Gtk::Box {
 public:
     explicit UpdatesTab(PackageManager& pm);
-    ~UpdatesTab() override = default;
+    ~UpdatesTab() override { *m_alive = false; }
 
     // Called by the main window to refresh when tab is activated
     void refresh();
@@ -60,6 +60,10 @@ private:
     // Cached packages
     std::vector<Package> m_packages;
     bool m_show_only_updates = false;
+
+    // Shared alive flag: set to false when the widget is destroyed.
+    // Background threads check this before accessing 'this'.
+    std::shared_ptr<bool> m_alive;
 
     void build_ui();
     void populate(const std::vector<Package>& pkgs);

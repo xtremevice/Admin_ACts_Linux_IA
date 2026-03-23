@@ -9,7 +9,7 @@
 class InstallTab : public Gtk::Box {
 public:
     explicit InstallTab(PackageManager& pm);
-    ~InstallTab() override = default;
+    ~InstallTab() override { *m_alive = false; }
 
 private:
     PackageManager& m_pm;
@@ -41,6 +41,9 @@ private:
     };
     Columns m_columns;
     Glib::RefPtr<Gtk::ListStore> m_model;
+
+    // Alive flag for safe detached thread callbacks
+    std::shared_ptr<bool> m_alive;
 
     void build_ui();
     void on_search_clicked();

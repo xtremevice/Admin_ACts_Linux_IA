@@ -4,11 +4,14 @@
 #include <thread>
 #include <mutex>
 
+#include <atomic>
+
 UpdatesTab::UpdatesTab(PackageManager& pm)
     : Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0),
       m_pm(pm),
       m_toolbar(Gtk::ORIENTATION_HORIZONTAL, 6),
-      m_filter_box(Gtk::ORIENTATION_HORIZONTAL, 6)
+      m_filter_box(Gtk::ORIENTATION_HORIZONTAL, 6),
+      m_alive(std::make_shared<bool>(true))
 {
     build_ui();
 }
@@ -222,7 +225,7 @@ void UpdatesTab::on_refresh_clicked() {
     set_busy(true);
     m_status_label.set_text("Cargando paquetes instalados...");
 
-    std::thread([this]() {
+    std::thread([this, alive = m_alive]() {
         auto installed = m_pm.list_installed();
         auto updates   = m_pm.check_updates();
 
@@ -237,8 +240,10 @@ void UpdatesTab::on_refresh_clicked() {
             }
         }
 
-        Glib::signal_idle().connect_once([this, installed = std::move(installed),
+        Glib::signal_idle().connect_once([this, alive,
+                                          installed = std::move(installed),
                                           count = (int)updates.size()]() mutable {
+            if (!*alive) return;
             populate(installed);
             set_busy(false);
             m_status_label.set_text("Paquetes cargados. Actualizaciones disponibles: " +
@@ -255,13 +260,14 @@ void UpdatesTab::on_update_all_clicked() {
     set_busy(true);
     m_status_label.set_text("Actualizando todos los paquetes...");
 
-    std::thread([this, password]() mutable {
-        bool ok = m_pm.update_all(password, [this](const std::string& msg) {
-            Glib::signal_idle().connect_once([this, msg]() {
-                m_status_label.set_text(msg.substr(0, 120));
+    std::thread([this, alive = m_alive, password]() mutable {
+        bool ok = m_pm.update_all(password, [this, alive](const std::string& msg) {
+            Glib::signal_idle().connect_once([this, alive, msg]() {
+                if (*alive) m_status_label.set_text(msg.substr(0, 120));
             });
         });
-        Glib::signal_idle().connect_once([this, ok]() {
+        Glib::signal_idle().connect_once([this, alive, ok]() {
+            if (!*alive) return;
             set_busy(false);
             m_status_label.set_text(ok ? "Actualización completada." : "Error durante la actualización.");
             on_refresh_clicked();
@@ -315,9 +321,10 @@ void UpdatesTab::on_update_clicked(const Glib::ustring& name, const Glib::ustrin
     set_busy(true);
     m_status_label.set_text("Actualizando " + name + "...");
 
-    std::thread([this, name = name.raw(), password]() mutable {
+    std::thread([this, alive = m_alive, name = name.raw(), password]() mutable {
         bool ok = m_pm.update_package(name, password);
-        Glib::signal_idle().connect_once([this, ok, name]() {
+        Glib::signal_idle().connect_once([this, alive, ok, name]() {
+            if (!*alive) return;
             set_busy(false);
             m_status_label.set_text(ok ? (name + " actualizado correctamente.")
                                        : ("Error al actualizar " + name + "."));
@@ -343,9 +350,10 @@ void UpdatesTab::on_remove_clicked(const Glib::ustring& name, const Glib::ustrin
     set_busy(true);
     m_status_label.set_text("Eliminando " + name + "...");
 
-    std::thread([this, name = name.raw(), password]() mutable {
+    std::thread([this, alive = m_alive, name = name.raw(), password]() mutable {
         bool ok = m_pm.remove_package(name, password);
-        Glib::signal_idle().connect_once([this, ok, name]() {
+        Glib::signal_idle().connect_once([this, alive, ok, name]() {
+            if (!*alive) return;
             set_busy(false);
             m_status_label.set_text(ok ? (name + " eliminado correctamente.")
                                        : ("Error al eliminar " + name + "."));

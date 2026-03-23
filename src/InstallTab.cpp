@@ -1,11 +1,13 @@
 #include "InstallTab.h"
 #include "AuthDialog.h"
+#include <memory>
 #include <thread>
 
 InstallTab::InstallTab(PackageManager& pm)
     : Gtk::Box(Gtk::ORIENTATION_VERTICAL, 0),
       m_pm(pm),
-      m_search_box(Gtk::ORIENTATION_HORIZONTAL, 6)
+      m_search_box(Gtk::ORIENTATION_HORIZONTAL, 6),
+      m_alive(std::make_shared<bool>(true))
 {
     build_ui();
 }
@@ -153,9 +155,10 @@ void InstallTab::on_search_clicked() {
     m_status_label.set_text("Buscando «" + query + "»...");
     m_model->clear();
 
-    std::thread([this, query = query.raw()]() {
+    std::thread([this, alive = m_alive, query = query.raw()]() {
         auto results = m_pm.search(query);
-        Glib::signal_idle().connect_once([this, results = std::move(results)]() mutable {
+        Glib::signal_idle().connect_once([this, alive, results = std::move(results)]() mutable {
+            if (!*alive) return;
             m_model->clear();
             for (auto& p : results) {
                 auto row = *m_model->append();
@@ -188,14 +191,15 @@ void InstallTab::on_install_clicked(const Glib::ustring& name, const Glib::ustri
     set_busy(true);
     m_status_label.set_text("Instalando " + name + " con todas sus dependencias...");
 
-    std::thread([this, name = name.raw(), password]() mutable {
-        bool ok = m_pm.install_package(name, password, [this](const std::string& msg) {
-            Glib::signal_idle().connect_once([this, msg]() {
-                m_status_label.set_text(msg.substr(0, 120));
+    std::thread([this, alive = m_alive, name = name.raw(), password]() mutable {
+        bool ok = m_pm.install_package(name, password, [this, alive](const std::string& msg) {
+            Glib::signal_idle().connect_once([this, alive, msg]() {
+                if (*alive) m_status_label.set_text(msg.substr(0, 120));
             });
         });
 
-        Glib::signal_idle().connect_once([this, ok, name]() {
+        Glib::signal_idle().connect_once([this, alive, ok, name]() {
+            if (!*alive) return;
             set_busy(false);
             if (ok) {
                 m_status_label.set_text(name + " instalado correctamente con todas sus dependencias.");
