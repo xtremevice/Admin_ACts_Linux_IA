@@ -1,0 +1,20 @@
+#!/bin/sh
+# postinst – runs after the .deb package is installed or upgraded.
+set -e
+
+case "$1" in
+  configure|upgrade)
+    # Update the XDG application database so the launcher appears in menus.
+    if command -v update-desktop-database > /dev/null 2>&1; then
+      update-desktop-database -q /usr/share/applications || true
+    fi
+
+    # Refresh icon cache so the application icon appears correctly.
+    if command -v gtk-update-icon-cache > /dev/null 2>&1; then
+      gtk-update-icon-cache -q -t /usr/share/icons/hicolor || true
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+exit 0
